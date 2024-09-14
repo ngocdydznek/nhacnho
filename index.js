@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Events, REST, Routes, EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const http = require('http'); // Thêm HTTP để giữ bot hoạt động
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
 // Đọc nhắc nhở từ tệp JSON
@@ -14,6 +15,7 @@ client.once('ready', () => {
   loadReminders();
   registerCommands();
   checkReminders();
+  keepAlive(); // Giữ bot hoạt động
 });
 
 // Đọc nhắc nhở từ tệp JSON
@@ -50,8 +52,8 @@ const registerCommands = async () => {
           options: [
             {
               type: 3, // STRING
-              name: 'ngay_gio',
-              description: 'Ngày và giờ nhắc nhở (ví dụ: 2024-09-15T14:30:00Z)',
+              name: 'ngay',
+              description: 'Ngày nhắc nhở (ví dụ: 15/09/2024)',
               required: true,
             },
             {
@@ -84,17 +86,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const { commandName, options } = interaction;
 
   if (commandName === 'nhac') {
-    const ngayGio = options.getString('ngay_gio');
+    const ngay = options.getString('ngay');
     const nguoiDung = options.getUser('nguoi_dung');
     const sanPham = options.getString('san_pham');
 
+    // Tách ngày/tháng/năm và tạo đối tượng Date
+    const [day, month, year] = ngay.split('/');
+    const now = new Date(); // Lấy giờ hiện tại
+    const reminderTime = new Date(`${year}-${month}-${day}T${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}Z`);
+
     // Thêm nhắc nhở vào danh sách và lưu vào tệp JSON
-    reminders.push({ ngayGio, nguoiDung: nguoiDung.id, sanPham, sent: false });
+    reminders.push({ reminderTime: reminderTime.toISOString(), nguoiDung: nguoiDung.id, sanPham, sent: false });
     saveReminders();
 
     const embed = new EmbedBuilder()
       .setTitle('Nhắc Nhở')
-      .setDescription(`Ngày giờ: ${ngayGio}\nNgười dùng: ${nguoiDung}\nSản phẩm: ${sanPham}`)
+      .setDescription(`Ngày: ${ngay}\nGiờ: ${now.getHours()}:${now.getMinutes()}\nNgười dùng: ${nguoiDung}\nSản phẩm: ${sanPham}`)
       .setColor('#00FF00');
 
     await interaction.reply({ content: 'Nhắc nhở đã được thêm vào!', ephemeral: true });
@@ -106,7 +113,7 @@ const checkReminders = () => {
   setInterval(async () => {
     const now = new Date();
     reminders.forEach(async (reminder, index) => {
-      const reminderTime = new Date(reminder.ngayGio);
+      const reminderTime = new Date(reminder.reminderTime);
       if (!reminder.sent && now >= reminderTime) {
         const channel = client.channels.cache.get('1284585212461973618'); // Thay CHANNEL_ID bằng ID của kênh bạn muốn gửi tin nhắn
         if (channel) {
@@ -122,6 +129,16 @@ const checkReminders = () => {
       }
     });
   }, 60000); // Kiểm tra mỗi phút
+};
+
+// Giữ bot hoạt động 24/7
+const keepAlive = () => {
+  http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot is alive!');
+  }).listen(3000, () => {
+    console.log('Server is ready on port 3000');
+  });
 };
 
 // Đăng nhập bot
