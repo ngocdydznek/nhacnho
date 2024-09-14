@@ -108,7 +108,7 @@ const checkReminders = () => {
     reminders.forEach(async (reminder, index) => {
       const reminderTime = new Date(reminder.ngayGio);
       if (!reminder.sent && now >= reminderTime) {
-        const channel = client.channels.cache.get('1284414998235316284'); // Thay CHANNEL_ID bằng ID của kênh bạn muốn gửi tin nhắn
+        const channel = client.channels.cache.get('1284585212461973618'); // Thay CHANNEL_ID bằng ID của kênh bạn muốn gửi tin nhắn
         if (channel) {
           const embed = new EmbedBuilder()
             .setTitle('Nhắc Nhở')
